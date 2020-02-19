@@ -1,0 +1,110 @@
+Simple WiFi client which send data to tmep.cz server. The program collect data from DHT11 sensor (temperature & humidity) and these send to the server.
+
+Code:
+```c
+#include <DHT.h>
+#include <ESP8266WiFi.h>
+#define DHTPIN 2
+#define DHTTYPE  DHT11
+
+const String ssid = "***";
+const char* password = "***";
+const char* host = "sweethome.tmep.cz";
+const int port = 80;
+const String guid = "xyz";
+const int period = 60000;
+
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(9600);
+
+  dht.begin();
+
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting ");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println("\nConnection established");
+}
+
+void loop() {
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Reading from the DHT sensor failed!");
+    return;
+  }
+
+  float hic = dht.computeHeatIndex(temperature, humidity, false);
+
+  WiFiClient client;
+  if (client.connect(host, port)) {
+    Serial.println("Connected to " + String(host));
+
+    String query = "?" + guid + "=" + String(temperature) + "&humV=" + String((int) humidity);
+
+    client.print(String("GET /") + query + " HTTP/1.1\r\n" +
+      "Host: " + host + "\r\n" +
+      "Connection: close\r\n" +
+      "\r\n"
+    );
+  
+    Serial.println("Request GET " + String(host) + "/" + query + " sent");
+
+    Serial.println("Response:");
+    while (client.connected() || client.available()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line);
+      }
+    }
+  
+    client.stop();
+
+    delay(period);
+  } else {
+    Serial.println("Connection to " + String(host) + " failed");
+    client.stop();
+    delay(5000);
+    return;
+  }
+}
+```
+
+Output:
+```
+Connecting .......
+01:28:42.495 -> Connection established
+01:28:42.561 -> Connected to sweethome.tmep.cz
+01:28:42.594 -> Request GET sweethome.tmep.cz/?xyz=22.70&humV=37 sent
+01:28:42.660 -> Response:
+01:28:42.694 -> HTTP/1.1 200 OK
+01:28:42.694 -> Date: Wed, 19 Feb 2020 00:28:40 GMT
+01:28:42.760 -> Server: Apache/2.4.18 (Ubuntu)
+01:28:42.793 -> Vary: Accept-Encoding
+01:28:42.793 -> Connection: close
+01:28:42.826 -> Transfer-Encoding: chunked
+01:28:42.859 -> Content-Type: text/html; charset=UTF-8
+01:28:42.892 -> Content-Language: cs
+01:28:42.926 -> 
+01:28:42.926 -> 0
+01:28:42.926 -> 
+01:29:42.823 -> Connected to sweethome.tmep.cz
+01:29:42.857 -> Request GET sweethome.tmep.cz/?xyz=24.10&humV=37 sent
+01:29:42.956 -> Response:
+01:29:42.956 -> HTTP/1.1 200 OK
+01:29:42.989 -> Date: Wed, 19 Feb 2020 00:29:41 GMT
+01:29:43.022 -> Server: Apache/2.4.18 (Ubuntu)
+01:29:43.055 -> Vary: Accept-Encoding
+01:29:43.088 -> Connection: close
+01:29:43.122 -> Transfer-Encoding: chunked
+01:29:43.155 -> Content-Type: text/html; charset=UTF-8
+01:29:43.188 -> Content-Language: cs
+01:29:43.235 -> 
+01:29:43.235 -> 0
+01:29:43.235 -> 
+```
