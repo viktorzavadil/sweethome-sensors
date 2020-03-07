@@ -4,15 +4,20 @@ Code:
 ```c
 #include <DHT.h>
 #include <ESP8266WiFi.h>
-#define DHTPIN 2
-#define DHTTYPE  DHT11
+#include "config.h"
 
-const String ssid = "***";
-const char* password = "***";
-const char* host = "sweethome.tmep.cz";
-const int port = 80;
-const String guid = "xyz";
-const int period = 60000;
+/*
+ * A   RXD     |   GPIO3  o o VCC
+ * N   SPI_CS2 |   GPIO0  o o RESET (pulled up)
+ * T               GPIO2  o o CH_PD (pulled up)
+ *                   GND  o o GPIO1 | TXD
+ */
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+#define CONNECTING_STATUS_DELAY = 500;
+#define READING_PERIOD = 60000;
+#define ERROR_DELAY = 5000;
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -21,12 +26,12 @@ void setup() {
 
   dht.begin();
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   Serial.print("Connecting ");
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(500);
+    delay(CONNECTING_STATUS_DELAY);
   }
   Serial.println("\nConnection established");
 }
@@ -36,24 +41,23 @@ void loop() {
   float temperature = dht.readTemperature();
   if (isnan(humidity) || isnan(temperature)) {
     Serial.println("Reading from the DHT sensor failed!");
+    delay(ERROR_DELAY);
     return;
   }
 
-  float hic = dht.computeHeatIndex(temperature, humidity, false);
-
   WiFiClient client;
-  if (client.connect(host, port)) {
-    Serial.println("Connected to " + String(host));
+  if (client.connect(TMEP_HOST, TMEP_PORT)) {
+    Serial.println("Connected to " + String(TMEP_HOST));
 
-    String query = "?" + guid + "=" + String(temperature) + "&humV=" + String((int) humidity);
+    String query = "?" + String(TMEP_DHT_SENSOR_GUID) + "=" + String(temperature) + "&humV=" + String((int) humidity);
 
     client.print(String("GET /") + query + " HTTP/1.1\r\n" +
-      "Host: " + host + "\r\n" +
+      "Host: " + TMEP_HOST + "\r\n" +
       "Connection: close\r\n" +
       "\r\n"
     );
   
-    Serial.println("Request GET " + String(host) + "/" + query + " sent");
+    Serial.println("Request GET " + String(TMEP_HOST) + "/" + query + " sent");
 
     Serial.println("Response:");
     while (client.connected() || client.available()) {
@@ -65,11 +69,11 @@ void loop() {
   
     client.stop();
 
-    delay(period);
+    delay(READING_PERIOD);
   } else {
-    Serial.println("Connection to " + String(host) + " failed");
+    Serial.println("Connection to " + String(TMEP_HOST) + " failed");
     client.stop();
-    delay(5000);
+    delay(ERROR_DELAY);
     return;
   }
 }
