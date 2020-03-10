@@ -1,0 +1,16 @@
+#ifndef _SWEETHOME_CONFIG
+#define _SWEETHOME_CONFIG
+
+#define SEA_LEVEL_PRESSURE 1013.25
+
+#define WIFI_SSID "*"
+#define WIFI_PASSWORD "*"
+#define TMEP_OUTSIDE_PRESSURE_HOST "*.tmep.cz"
+#define TMEP_OUTSIDE_TEMPERATURE_HOST "*.tmep.cz"
+#define TMEP_GREENGARDEN_HOST "*.tmep.cz"
+#define TMEP_PORT 80
+#define TMEP_BMP280_PRESSURE_GUID "*"
+#define TMEP_BMP280_TEMPERATURE_GUID "*"
+#define TMEP_DHT_SENSOR_GUID "*"
+
+#endif
